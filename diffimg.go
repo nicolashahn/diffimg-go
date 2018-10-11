@@ -15,11 +15,11 @@ func checkErr(err error) {
   }
 }
 
-func Abs(x int) uint32 {
+func Abs(x int) uint64 {
 	if x < 0 {
-		return uint32(-x)
+		return uint64(-x)
 	}
-	return uint32(x)
+	return uint64(x)
 }
 
 // Main diffimg functions
@@ -67,10 +67,10 @@ func rgbaArray(im image.Image, x, y int) [4]uint32 {
 // abs(120-100) + abs(100-100) + abs(180-100) + abs(255-255)
 // 20 + 0 + 80 + 0 = 100
 // return 100
-func pixelDiff(im1, im2 image.Image, x, y int) uint32 {
+func pixelDiff(im1, im2 image.Image, x, y int) uint64 {
   rgba1 := rgbaArray(im1, x, y)
   rgba2 := rgbaArray(im2, x, y)
-  var pixDiffVal uint32
+  var pixDiffVal uint64
   for i, _ := range rgba1 {
     chanDiff := Abs(int(rgba1[i]) - int(rgba2[i]))
     pixDiffVal += chanDiff
@@ -82,7 +82,7 @@ func pixelDiff(im1, im2 image.Image, x, y int) uint32 {
 // Adds up all the differences in each pixel's channel values, and averages
 // over all pixels
 func DiffImages(im1, im2 image.Image) float64 {
-  var sumPixDiffVals uint32
+  var sumPixDiffVals uint64
   width := im1.Bounds().Max.X
   height := im2.Bounds().Max.Y
   for y := 0; y < height; y++ {
