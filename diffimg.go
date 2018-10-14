@@ -47,7 +47,7 @@ func loadImage(filepath string) image.Image {
 
 func checkDimensions(im1, im2 image.Image) {
 	if im1.Bounds() != im2.Bounds() {
-		fmt.Fprintln(os.Stderr, "image dimensions are different:",
+		fmt.Fprintln(os.Stderr, "Image dimensions are different:",
 			im1.Bounds(), im2.Bounds())
 		os.Exit(1)
 	}
@@ -56,7 +56,9 @@ func checkDimensions(im1, im2 image.Image) {
 // TODO Convert 2nd image color model to 1st
 func checkColorModel(im1, im2 image.Image) {
 	if im1.ColorModel() != im2.ColorModel() {
-		panic("color models are different")
+		fmt.Fprintln(os.Stderr, "Color models are different:",
+			im1.ColorModel(), im2.ColorModel())
+		os.Exit(1)
 	}
 }
 
