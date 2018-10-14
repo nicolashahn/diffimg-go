@@ -1,6 +1,10 @@
+// This package provides image diffing tools. You can create a difference image
+// from two given images, or find their difference ratio/percentage.
+
 package main
 
 import (
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
@@ -8,21 +12,14 @@ import (
 	"os"
 )
 
-
-// Helper functions
-
+//////////////////////
+// Helper functions //
+//////////////////////
 
 func checkErr(err error) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-func abs(x int) uint32 {
-	if x < 0 {
-		return uint32(-x)
-	}
-	return uint32(x)
 }
 
 func getWidthAndHeight(im image.Image) (int, int) {
@@ -31,9 +28,10 @@ func getWidthAndHeight(im image.Image) (int, int) {
 	return width, height
 }
 
-func checkArgs() {
-	if len(os.Args) != 3 {
-		fmt.Fprintln(os.Stderr, "must pass exactly two arguments (image1 and image2)")
+func parseArgs() {
+	flag.Parse()
+	if len(flag.Args()) != 2 {
+		fmt.Fprintln(os.Stderr, "Require exactly two args: filename1, filename2")
 		os.Exit(1)
 	}
 }
@@ -62,33 +60,23 @@ func checkColorModel(im1, im2 image.Image) {
 	}
 }
 
-
-// Functions for actually getting the ratio, generating diff image
-
-
 func rgbaArrayUint16(col color.Color) [4]uint16 {
 	r, g, b, a := col.RGBA()
 	return [4]uint16{uint16(r), uint16(g), uint16(b), uint16(a)}
 }
 
-// return a color created from diffing each of the image's color values
-// at (x,y)
-func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
-	rgba1 := rgbaArrayUint16(im1.At(x,y))
-	rgba2 := rgbaArrayUint16(im2.At(x,y))
-	var rgba3 [4]uint16
-	for i, _ := range rgba1 {
-		rgba3[i] = uint16(abs(int(rgba1[i]) - int(rgba2[i])))
+func abs(x int) uint32 {
+	if x < 0 {
+		return uint32(-x)
 	}
-	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
-	// invert alpha channel - if both images have full alpha, the resulting new
-	// pixel would be completely transparent
-	a = 65535 - a
-	newColor := color.RGBA64{r,g,b,a}
-	return newColor
+	return uint32(x)
 }
 
-// absolute difference between the channel values of the pixels at the same
+//////////////////////////////
+// Just generate diff ratio //
+//////////////////////////////
+
+// Absolute difference between the channel values of the pixels at the same
 // coordinates (x,y) in im1, im2
 // Example (real channel values max at 65535, not 255 though):
 // RGBA for im1 at (x,y): (100, 100, 180, 255)
@@ -97,25 +85,14 @@ func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
 // 20 + 0 + 80 + 0 = 100
 // return 100
 func sumPixelDiff(im1, im2 image.Image, x, y int) uint64 {
-	rgba1 := rgbaArrayUint16(im1.At(x,y))
-	rgba2 := rgbaArrayUint16(im2.At(x,y))
+	rgba1 := rgbaArrayUint16(im1.At(x, y))
+	rgba2 := rgbaArrayUint16(im2.At(x, y))
 	var pixDiffVal uint64
 	for i, _ := range rgba1 {
 		chanDiff := uint64(abs(int(rgba1[i]) - int(rgba2[i])))
 		pixDiffVal += chanDiff
 	}
 	return pixDiffVal
-}
-
-func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
-	rgba := rgbaArrayUint16(diffIm.At(x,y))
-	// diffIm's alpha channel was inverted
-	rgba[3] = 65535 - rgba[3]
-	var sum uint64
-	for _,v := range rgba {
-		sum += uint64(v)
-	}
-	return sum
 }
 
 // Calculate difference ratio between two Images
@@ -132,6 +109,38 @@ func GetRatio(im1, im2 image.Image) float64 {
 	// Sum of max channel values for all pixels in the image
 	totalPixVals := (height * width) * (65535 * 4)
 	return float64(sumPixDiffVals) / float64(totalPixVals)
+}
+
+/////////////////////////
+// Generate diff image //
+/////////////////////////
+
+// return a color created from diffing each of the image's color values
+// at (x,y)
+func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
+	rgba1 := rgbaArrayUint16(im1.At(x, y))
+	rgba2 := rgbaArrayUint16(im2.At(x, y))
+	var rgba3 [4]uint16
+	for i, _ := range rgba1 {
+		rgba3[i] = uint16(abs(int(rgba1[i]) - int(rgba2[i])))
+	}
+	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
+	// Invert alpha channel - if both images have full alpha, the resulting new
+	// pixel would be completely transparent
+	a = 65535 - a
+	newColor := color.RGBA64{r, g, b, a}
+	return newColor
+}
+
+func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
+	rgba := rgbaArrayUint16(diffIm.At(x, y))
+	// diffIm's alpha channel was inverted
+	rgba[3] = 65535 - rgba[3]
+	var sum uint64
+	for _, v := range rgba {
+		sum += uint64(v)
+	}
+	return sum
 }
 
 // Create a new image made by diffing each color value (RGBA) at each pixel in
@@ -163,20 +172,27 @@ func GetRatioFromImage(diffIm image.Image) float64 {
 	return float64(sum) / float64(totalPixVals)
 }
 
+/////////////////////////
+// Main (CLI behavior) //
+/////////////////////////
+
 func main() {
 
-	createDiffIm := true
+	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
+	returnRatioPtr := flag.Bool("ratio", false,
+		"Output a ratio (0-1.0) instead of the percentage sentence")
 
-	checkArgs()
-	im1 := loadImage(os.Args[1])
-	im2 := loadImage(os.Args[2])
-	
-	// Ensure images are compatible
+	parseArgs()
+
+	im1 := loadImage(flag.Args()[0])
+	im2 := loadImage(flag.Args()[1])
+
+	// Ensure images are compatible for diffing
 	checkDimensions(im1, im2)
 	checkColorModel(im1, im2)
 
 	var ratio float64
-	if createDiffIm {
+	if *createDiffImPtr {
 		diffIm := CreateDiffImage(im1, im2)
 		ratio = GetRatioFromImage(diffIm)
 		newFile, _ := os.Create("diffimg.png")
@@ -186,6 +202,10 @@ func main() {
 		ratio = GetRatio(im1, im2)
 	}
 
-	percentage := ratio * 100
-	fmt.Printf("Images differ by %v%%", percentage)
+	if *returnRatioPtr {
+		fmt.Println(ratio)
+	} else {
+		percentage := ratio * 100
+		fmt.Printf("Images differ by %v%%", percentage)
+	}
 }
