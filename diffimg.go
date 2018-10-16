@@ -23,7 +23,8 @@ var invertAlphaPtr *bool
 
 func checkErr(err error) {
 	if err != nil {
-		panic(err)
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
 	}
 }
 
@@ -52,18 +53,10 @@ func loadImage(filepath string) image.Image {
 
 func checkDimensions(im1, im2 image.Image) {
 	if im1.Bounds() != im2.Bounds() {
-		fmt.Fprintln(os.Stderr, "Image dimensions are different:",
-			im1.Bounds(), im2.Bounds())
-		os.Exit(1)
-	}
-}
-
-// TODO Convert 2nd image color model to 1st to allow comparison between
-// different image types, png vs jpeg for instance
-func checkColorModel(im1, im2 image.Image) {
-	if im1.ColorModel() != im2.ColorModel() {
-		fmt.Fprintf(os.Stderr, "Color models are different: %T, %T\n",
-			im1, im2)
+		im1w, im1h := getWidthAndHeight(im1)
+		im2w, im2h := getWidthAndHeight(im2)
+		fmt.Fprintf(os.Stderr, "Image dimensions are different: %vx%v, %vx%v\n",
+			im1w, im1h, im2w, im2h)
 		os.Exit(1)
 	}
 }
@@ -214,7 +207,6 @@ func main() {
 
 	// Ensure images are compatible for diffing
 	checkDimensions(im1, im2)
-	checkColorModel(im1, im2)
 
 	var ratio float64
 	if *createDiffImPtr {
