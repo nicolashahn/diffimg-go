@@ -8,14 +8,13 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	_ "image/jpeg"
 	"image/png"
 	"os"
 )
 
-///////////////
-// Constants //
-///////////////
-
+// This command line flag is used in multiple functions, so it's simpler to
+// keep as a global variable
 var invertAlphaPtr *bool
 
 //////////////////////
@@ -71,6 +70,7 @@ func checkColorModel(im1, im2 image.Image) {
 func rgbaArrayUint8(col color.Color) [4]uint8 {
 	// The values are stored as uint8, but returned by RGBA() as uint32 for
 	// compatibility, we need to manually convert back to uint8
+	// See https://golang.org/src/image/color/color.go
 	r, g, b, a := col.RGBA()
 	r >>= 8
 	g >>= 8
@@ -79,16 +79,21 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 	return [4]uint8{uint8(r), uint8(g), uint8(b), uint8(a)}
 }
 
-func abs(x int) uint32 {
-	if x < 0 {
-		return uint32(-x)
+// Abs(x - y)
+func absDiffUint8(x, y uint8) uint8 {
+	int16x := int16(x)
+	int16y := int16(y)
+	diff := int16x - int16y
+	if diff < 0 {
+		return uint8(-diff)
 	}
-	return uint32(x)
+	return uint8(diff)
 }
 
-//////////////////////////////
-// Just generate diff ratio //
-//////////////////////////////
+////////////////////////////////////////////////////////
+// Get difference ratio without creating a diff image //
+// (This is faster than creating a diff image first)  //
+////////////////////////////////////////////////////////
 
 // Absolute difference between the channel values of the pixels at the same
 // coordinates (x,y) in im1, im2
@@ -98,12 +103,12 @@ func abs(x int) uint32 {
 // abs(100-120) + abs(100-100) + abs(180-100) + abs(255-255)
 // 20 + 0 + 80 + 0 = 100
 // return 100
-func sumPixelDiff(im1, im2 image.Image, x, y int) uint64 {
+func sumPixelDiff(im1, im2 image.Image, x, y int) uint16 {
 	rgba1 := rgbaArrayUint8(im1.At(x, y))
 	rgba2 := rgbaArrayUint8(im2.At(x, y))
-	var pixDiffVal uint64
+	var pixDiffVal uint16
 	for i, _ := range rgba1 {
-		chanDiff := uint64(abs(int(rgba1[i]) - int(rgba2[i])))
+		chanDiff := uint16(absDiffUint8(rgba1[i], rgba2[i]))
 		pixDiffVal += chanDiff
 	}
 	return pixDiffVal
@@ -117,7 +122,7 @@ func GetRatio(im1, im2 image.Image) float64 {
 	width, height := getWidthAndHeight(im1)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			sum += sumPixelDiff(im1, im2, x, y)
+			sum += uint64(sumPixelDiff(im1, im2, x, y))
 		}
 	}
 	// Sum of max channel values for all pixels in the image
@@ -125,18 +130,18 @@ func GetRatio(im1, im2 image.Image) float64 {
 	return float64(sum) / float64(totalPixVals)
 }
 
-/////////////////////////
-// Generate diff image //
-/////////////////////////
+////////////////////////////////////////////
+// Generate diff image, get ratio from it //
+////////////////////////////////////////////
 
-// return a color created from diffing each of the image's color values
+// Return a color created from diffing each of the image's color values
 // at (x,y)
 func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
 	rgba1 := rgbaArrayUint8(im1.At(x, y))
 	rgba2 := rgbaArrayUint8(im2.At(x, y))
 	var rgba3 [4]uint8
 	for i, _ := range rgba1 {
-		rgba3[i] = uint8(abs(int(rgba1[i]) - int(rgba2[i])))
+		rgba3[i] = absDiffUint8(rgba1[i], rgba2[i])
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
 	if *invertAlphaPtr {
@@ -146,6 +151,7 @@ func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
 	return newColor
 }
 
+// Sum the channel values at the given coordinates of the diff image
 func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
 	rgba := rgbaArrayUint8(diffIm.At(x, y))
 	if *invertAlphaPtr {
@@ -193,6 +199,7 @@ func GetRatioFromImage(diffIm image.Image) float64 {
 
 func main() {
 
+	// Command line flags
 	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
 	returnRatioPtr := flag.Bool("ratio", false,
 		"Output a ratio (0-1.0) instead of the percentage sentence")
@@ -212,7 +219,7 @@ func main() {
 	if *createDiffImPtr {
 		diffIm := CreateDiffImage(im1, im2)
 		ratio = GetRatioFromImage(diffIm)
-		newFile, _ := os.Create("diffimg.png")
+		newFile, _ := os.Create("diff.png")
 		png.Encode(newFile, diffIm)
 	} else {
 		// Just getting the ratio without creating a diffIm is faster
