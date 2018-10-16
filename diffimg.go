@@ -58,11 +58,12 @@ func checkDimensions(im1, im2 image.Image) {
 	}
 }
 
-// TODO Convert 2nd image color model to 1st
+// TODO Convert 2nd image color model to 1st to allow comparison between
+// different image types, png vs jpeg for instance
 func checkColorModel(im1, im2 image.Image) {
 	if im1.ColorModel() != im2.ColorModel() {
-		fmt.Fprintln(os.Stderr, "Color models are different:",
-			im1.ColorModel(), im2.ColorModel())
+		fmt.Fprintf(os.Stderr, "Color models are different: %T, %T\n",
+			im1, im2)
 		os.Exit(1)
 	}
 }
