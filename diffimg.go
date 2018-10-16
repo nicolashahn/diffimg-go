@@ -12,6 +12,12 @@ import (
 	"os"
 )
 
+///////////////
+// Constants //
+///////////////
+
+var invertAlphaPtr *bool
+
 //////////////////////
 // Helper functions //
 //////////////////////
@@ -133,14 +139,18 @@ func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
 		rgba3[i] = uint8(abs(int(rgba1[i]) - int(rgba2[i])))
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
-	a = 255 - a
+	if *invertAlphaPtr {
+		a = 255 - a
+	}
 	newColor := color.RGBA{r, g, b, a}
 	return newColor
 }
 
 func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
 	rgba := rgbaArrayUint8(diffIm.At(x, y))
-	rgba[3] = 255 - rgba[3]
+	if *invertAlphaPtr {
+		rgba[3] = 255 - rgba[3]
+	}
 	var sum uint64
 	for _, v := range rgba {
 		sum += uint64(v)
@@ -186,6 +196,8 @@ func main() {
 	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
 	returnRatioPtr := flag.Bool("ratio", false,
 		"Output a ratio (0-1.0) instead of the percentage sentence")
+	invertAlphaPtr = flag.Bool("invertalpha", false,
+		"Invert the alpha channel for the generated diff image")
 
 	parseArgs()
 
