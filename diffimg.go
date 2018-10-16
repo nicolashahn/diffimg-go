@@ -62,9 +62,15 @@ func checkColorModel(im1, im2 image.Image) {
 	}
 }
 
-func rgbaArrayUint16(col color.Color) [4]uint16 {
+func rgbaArrayUint8(col color.Color) [4]uint8 {
+	// The values are stored as uint8, but returned by RGBA() as uint32 for
+	// compatibility, we need to manually convert back to uint8
 	r, g, b, a := col.RGBA()
-	return [4]uint16{uint16(r), uint16(g), uint16(b), uint16(a)}
+	r >>= 8
+	g >>= 8
+	b >>= 8
+	a >>= 8
+	return [4]uint8{uint8(r), uint8(g), uint8(b), uint8(a)}
 }
 
 func abs(x int) uint32 {
@@ -80,15 +86,15 @@ func abs(x int) uint32 {
 
 // Absolute difference between the channel values of the pixels at the same
 // coordinates (x,y) in im1, im2
-// Example (real channel values max at 65535, not 255 though):
+// Example:
 // RGBA for im1 at (x,y): (100, 100, 180, 255)
 // RGBA for im2 at (x,y): (120, 100, 100, 255)
 // abs(100-120) + abs(100-100) + abs(180-100) + abs(255-255)
 // 20 + 0 + 80 + 0 = 100
 // return 100
 func sumPixelDiff(im1, im2 image.Image, x, y int) uint64 {
-	rgba1 := rgbaArrayUint16(im1.At(x, y))
-	rgba2 := rgbaArrayUint16(im2.At(x, y))
+	rgba1 := rgbaArrayUint8(im1.At(x, y))
+	rgba2 := rgbaArrayUint8(im2.At(x, y))
 	var pixDiffVal uint64
 	for i, _ := range rgba1 {
 		chanDiff := uint64(abs(int(rgba1[i]) - int(rgba2[i])))
@@ -101,16 +107,16 @@ func sumPixelDiff(im1, im2 image.Image, x, y int) uint64 {
 // Adds up all the differences in each pixel's channel values, and averages
 // over all pixels
 func GetRatio(im1, im2 image.Image) float64 {
-	var sumPixDiffVals uint64
+	var sum uint64
 	width, height := getWidthAndHeight(im1)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			sumPixDiffVals += sumPixelDiff(im1, im2, x, y)
+			sum += sumPixelDiff(im1, im2, x, y)
 		}
 	}
 	// Sum of max channel values for all pixels in the image
-	totalPixVals := (height * width) * (65535 * 4)
-	return float64(sumPixDiffVals) / float64(totalPixVals)
+	totalPixVals := (height * width) * (255 * 4)
+	return float64(sum) / float64(totalPixVals)
 }
 
 /////////////////////////
@@ -120,24 +126,21 @@ func GetRatio(im1, im2 image.Image) float64 {
 // return a color created from diffing each of the image's color values
 // at (x,y)
 func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
-	rgba1 := rgbaArrayUint16(im1.At(x, y))
-	rgba2 := rgbaArrayUint16(im2.At(x, y))
-	var rgba3 [4]uint16
+	rgba1 := rgbaArrayUint8(im1.At(x, y))
+	rgba2 := rgbaArrayUint8(im2.At(x, y))
+	var rgba3 [4]uint8
 	for i, _ := range rgba1 {
-		rgba3[i] = uint16(abs(int(rgba1[i]) - int(rgba2[i])))
+		rgba3[i] = uint8(abs(int(rgba1[i]) - int(rgba2[i])))
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
-	// Invert alpha channel - if both images have full alpha, the resulting new
-	// pixel would be completely transparent
-	a = 65535 - a
-	newColor := color.RGBA64{r, g, b, a}
+	a = 255 - a
+	newColor := color.RGBA{r, g, b, a}
 	return newColor
 }
 
 func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
-	rgba := rgbaArrayUint16(diffIm.At(x, y))
-	// diffIm's alpha channel was inverted
-	rgba[3] = 65535 - rgba[3]
+	rgba := rgbaArrayUint8(diffIm.At(x, y))
+	rgba[3] = 255 - rgba[3]
 	var sum uint64
 	for _, v := range rgba {
 		sum += uint64(v)
@@ -170,7 +173,7 @@ func GetRatioFromImage(diffIm image.Image) float64 {
 			sum += sumDiffPixelValues(diffIm, x, y)
 		}
 	}
-	totalPixVals := (height * width) * (65535 * 4)
+	totalPixVals := (height * width) * (255 * 4)
 	return float64(sum) / float64(totalPixVals)
 }
 
@@ -208,6 +211,6 @@ func main() {
 		fmt.Println(ratio)
 	} else {
 		percentage := ratio * 100
-		fmt.Printf("Images differ by %v%%", percentage)
+		fmt.Printf("Images differ by %v%%\n", percentage)
 	}
 }
