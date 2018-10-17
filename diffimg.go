@@ -13,10 +13,6 @@ import (
 	"os"
 )
 
-// This command line flag is used in multiple functions, so it's simpler to
-// keep as a global variable
-var invertAlphaPtr *bool
-
 //////////////////////
 // Helper functions //
 //////////////////////
@@ -123,13 +119,24 @@ func GetRatio(im1, im2 image.Image) float64 {
 	return float64(sum) / float64(totalPixVals)
 }
 
-////////////////////////////////////////////
-// Generate diff image, get ratio from it //
-////////////////////////////////////////////
+/////////////////////////
+// Generate diff image //
+/////////////////////////
+
+// NOTE for the following functions relating to generated diff images:
+// The invertAlpha param flips the alpha value - without it, if two pixels have
+// different RGB values but the same alpha, the resulting pixel will be
+// invisible. For most images with an unused alpha channel (ie the image is
+// fully opaque) this means the diff image will be fully transparent. In this
+// case, invertAlpha should be set to true. When diffing graphics like logos or
+// other images that make use of a transparent background, you may want to set
+// invertAlpha to false to see where the difference in overlap is. The param
+// does not affect the diff ratio, unless you use differing bool values in
+// CreateDiffImage() and GetRatioFromImage().
 
 // Return a color created from diffing each of the image's color values
-// at (x,y)
-func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
+// at (x,y).
+func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
 	rgba1 := rgbaArrayUint8(im1.At(x, y))
 	rgba2 := rgbaArrayUint8(im2.At(x, y))
 	var rgba3 [4]uint8
@@ -137,17 +144,37 @@ func pixelDiff(im1, im2 image.Image, x, y int) color.Color {
 		rgba3[i] = absDiffUint8(rgba1[i], rgba2[i])
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
-	if *invertAlphaPtr {
+	if invertAlpha {
 		a = 255 - a
 	}
 	newColor := color.RGBA{r, g, b, a}
 	return newColor
 }
 
+// Create a new image made by diffing each color value (RGBA) at each pixel in
+// im1 and im2
+func CreateDiffImage(im1, im2 image.Image, invertAlpha bool) image.Image {
+	width, height := getWidthAndHeight(im1)
+	upLeft := image.Point{0, 0}
+	lowRight := image.Point{width, height}
+	diffIm := image.NewRGBA(image.Rectangle{upLeft, lowRight})
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			newPixel := pixelDiff(im1, im2, x, y, invertAlpha)
+			diffIm.Set(x, y, newPixel)
+		}
+	}
+	return diffIm
+}
+
+////////////////////////////////////////////
+// Get difference ratio from a diff image //
+////////////////////////////////////////////
+
 // Sum the channel values at the given coordinates of the diff image
-func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
+func sumDiffPixelValues(diffIm image.Image, x, y int, invertAlpha bool) uint64 {
 	rgba := rgbaArrayUint8(diffIm.At(x, y))
-	if *invertAlphaPtr {
+	if invertAlpha {
 		rgba[3] = 255 - rgba[3]
 	}
 	var sum uint64
@@ -157,29 +184,13 @@ func sumDiffPixelValues(diffIm image.Image, x, y int) uint64 {
 	return sum
 }
 
-// Create a new image made by diffing each color value (RGBA) at each pixel in
-// im1 and im2
-func CreateDiffImage(im1, im2 image.Image) image.Image {
-	width, height := getWidthAndHeight(im1)
-	upLeft := image.Point{0, 0}
-	lowRight := image.Point{width, height}
-	diffIm := image.NewRGBA(image.Rectangle{upLeft, lowRight})
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			newPixel := pixelDiff(im1, im2, x, y)
-			diffIm.Set(x, y, newPixel)
-		}
-	}
-	return diffIm
-}
-
 // Get the ratio by summing the diff image's pixel channel values
-func GetRatioFromImage(diffIm image.Image) float64 {
+func GetRatioFromImage(diffIm image.Image, invertAlpha bool) float64 {
 	width, height := getWidthAndHeight(diffIm)
 	var sum uint64
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			sum += sumDiffPixelValues(diffIm, x, y)
+			sum += sumDiffPixelValues(diffIm, x, y, invertAlpha)
 		}
 	}
 	totalPixVals := (height * width) * (255 * 4)
@@ -196,7 +207,7 @@ func main() {
 	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
 	returnRatioPtr := flag.Bool("ratio", false,
 		"Output a ratio (0-1.0) instead of the percentage sentence")
-	invertAlphaPtr = flag.Bool("invertalpha", false,
+		invertAlphaPtr := flag.Bool("invertalpha", false,
 		"Invert the alpha channel for the generated diff image")
 
 	parseArgs()
@@ -209,8 +220,8 @@ func main() {
 
 	var ratio float64
 	if *createDiffImPtr {
-		diffIm := CreateDiffImage(im1, im2)
-		ratio = GetRatioFromImage(diffIm)
+		diffIm := CreateDiffImage(im1, im2, *invertAlphaPtr)
+		ratio = GetRatioFromImage(diffIm, *invertAlphaPtr)
 		newFile, _ := os.Create("diff.png")
 		png.Encode(newFile, diffIm)
 	} else {
