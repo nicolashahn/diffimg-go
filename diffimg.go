@@ -75,9 +75,8 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 
 // Abs(x - y)
 func absDiffUint8(x, y uint8) uint8 {
-	int16x := int16(x)
-	int16y := int16(y)
-	diff := int16x - int16y
+	// int16 cast because result of subtraction could be negative
+	diff := int16(x) - int16(y)
 	if diff < 0 {
 		return uint8(-diff)
 	}
