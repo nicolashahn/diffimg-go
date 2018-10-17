@@ -1,15 +1,14 @@
 // This package provides image diffing tools. You can create a difference image
 // from two given images, or find their difference ratio/percentage.
 
-package main
+package diffimg
 
 import (
-	"flag"
 	"fmt"
 	"image"
 	"image/color"
 	_ "image/jpeg"
-	"image/png"
+	_ "image/png"
 	"os"
 )
 
@@ -17,40 +16,32 @@ import (
 // Helper functions //
 //////////////////////
 
-func checkErr(err error) {
+func CheckErr(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
 
-func getWidthAndHeight(im image.Image) (int, int) {
+func LoadImage(filepath string) image.Image {
+	file, err := os.Open(filepath)
+	CheckErr(err)
+	defer file.Close()
+	im, _, err := image.Decode(file)
+	CheckErr(err)
+	return im
+}
+
+func GetWidthAndHeight(im image.Image) (int, int) {
 	width := im.Bounds().Max.X
 	height := im.Bounds().Max.Y
 	return width, height
 }
 
-func parseArgs() {
-	flag.Parse()
-	if len(flag.Args()) != 2 {
-		fmt.Fprintln(os.Stderr, "Require exactly two args: filename1, filename2")
-		os.Exit(1)
-	}
-}
-
-func loadImage(filepath string) image.Image {
-	file, err := os.Open(filepath)
-	checkErr(err)
-	defer file.Close()
-	im, _, err := image.Decode(file)
-	checkErr(err)
-	return im
-}
-
-func checkDimensions(im1, im2 image.Image) {
+func CheckDimensions(im1, im2 image.Image) {
 	if im1.Bounds() != im2.Bounds() {
-		im1w, im1h := getWidthAndHeight(im1)
-		im2w, im2h := getWidthAndHeight(im2)
+		im1w, im1h := GetWidthAndHeight(im1)
+		im2w, im2h := GetWidthAndHeight(im2)
 		fmt.Fprintf(os.Stderr, "Image dimensions are different: %vx%v, %vx%v\n",
 			im1w, im1h, im2w, im2h)
 		os.Exit(1)
@@ -108,7 +99,7 @@ func sumPixelDiff(im1, im2 image.Image, x, y int) uint16 {
 // over all pixels
 func GetRatio(im1, im2 image.Image) float64 {
 	var sum uint64
-	width, height := getWidthAndHeight(im1)
+	width, height := GetWidthAndHeight(im1)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			sum += uint64(sumPixelDiff(im1, im2, x, y))
@@ -154,7 +145,7 @@ func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
 // Create a new image made by diffing each color value (RGBA) at each pixel in
 // im1 and im2
 func CreateDiffImage(im1, im2 image.Image, invertAlpha bool) image.Image {
-	width, height := getWidthAndHeight(im1)
+	width, height := GetWidthAndHeight(im1)
 	upLeft := image.Point{0, 0}
 	lowRight := image.Point{width, height}
 	diffIm := image.NewRGBA(image.Rectangle{upLeft, lowRight})
@@ -186,7 +177,7 @@ func sumDiffPixelValues(diffIm image.Image, x, y int, invertAlpha bool) uint64 {
 
 // Get the ratio by summing the diff image's pixel channel values
 func GetRatioFromImage(diffIm image.Image, invertAlpha bool) float64 {
-	width, height := getWidthAndHeight(diffIm)
+	width, height := GetWidthAndHeight(diffIm)
 	var sum uint64
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
@@ -195,44 +186,4 @@ func GetRatioFromImage(diffIm image.Image, invertAlpha bool) float64 {
 	}
 	totalPixVals := (height * width) * (255 * 4)
 	return float64(sum) / float64(totalPixVals)
-}
-
-/////////////////////////
-// Main (CLI behavior) //
-/////////////////////////
-
-func main() {
-
-	// Command line flags
-	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
-	returnRatioPtr := flag.Bool("ratio", false,
-		"Output a ratio (0-1.0) instead of the percentage sentence")
-		invertAlphaPtr := flag.Bool("invertalpha", false,
-		"Invert the alpha channel for the generated diff image")
-
-	parseArgs()
-
-	im1 := loadImage(flag.Args()[0])
-	im2 := loadImage(flag.Args()[1])
-
-	// Ensure images are compatible for diffing
-	checkDimensions(im1, im2)
-
-	var ratio float64
-	if *createDiffImPtr {
-		diffIm := CreateDiffImage(im1, im2, *invertAlphaPtr)
-		ratio = GetRatioFromImage(diffIm, *invertAlphaPtr)
-		newFile, _ := os.Create("diff.png")
-		png.Encode(newFile, diffIm)
-	} else {
-		// Just getting the ratio without creating a diffIm is faster
-		ratio = GetRatio(im1, im2)
-	}
-
-	if *returnRatioPtr {
-		fmt.Println(ratio)
-	} else {
-		percentage := ratio * 100
-		fmt.Printf("Images differ by %v%%\n", percentage)
-	}
 }
