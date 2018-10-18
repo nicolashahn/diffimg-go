@@ -48,7 +48,7 @@ func CheckDimensions(im1, im2 image.Image) {
 	}
 }
 
-func rgbaArrayUint8(col color.Color) [4]uint8 {
+func RgbaArrayUint8(col color.Color) [4]uint8 {
 	// The values are stored as uint8, but returned by RGBA() as uint32 for
 	// compatibility, we need to manually convert back to uint8
 	// See https://golang.org/src/image/color/color.go
@@ -61,7 +61,7 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 }
 
 // Abs(x - y)
-func absDiffUint8(x, y uint8) uint8 {
+func AbsDiffUint8(x, y uint8) uint8 {
 	// int16 cast because result of subtraction could be negative
 	diff := int16(x) - int16(y)
 	if diff < 0 {
@@ -84,11 +84,11 @@ func absDiffUint8(x, y uint8) uint8 {
 // 20 + 0 + 80 + 0 = 100
 // return 100
 func sumPixelDiff(im1, im2 image.Image, x, y int) uint16 {
-	rgba1 := rgbaArrayUint8(im1.At(x, y))
-	rgba2 := rgbaArrayUint8(im2.At(x, y))
+	rgba1 := RgbaArrayUint8(im1.At(x, y))
+	rgba2 := RgbaArrayUint8(im2.At(x, y))
 	var pixDiffVal uint16
 	for i, _ := range rgba1 {
-		chanDiff := uint16(absDiffUint8(rgba1[i], rgba2[i]))
+		chanDiff := uint16(AbsDiffUint8(rgba1[i], rgba2[i]))
 		pixDiffVal += chanDiff
 	}
 	return pixDiffVal
@@ -128,11 +128,11 @@ func GetRatio(im1, im2 image.Image) float64 {
 // Return a color created from diffing each of the image's color values
 // at (x,y).
 func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
-	rgba1 := rgbaArrayUint8(im1.At(x, y))
-	rgba2 := rgbaArrayUint8(im2.At(x, y))
+	rgba1 := RgbaArrayUint8(im1.At(x, y))
+	rgba2 := RgbaArrayUint8(im2.At(x, y))
 	var rgba3 [4]uint8
 	for i, _ := range rgba1 {
-		rgba3[i] = absDiffUint8(rgba1[i], rgba2[i])
+		rgba3[i] = AbsDiffUint8(rgba1[i], rgba2[i])
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
 	if invertAlpha {
@@ -164,7 +164,7 @@ func CreateDiffImage(im1, im2 image.Image, invertAlpha bool) image.Image {
 
 // Sum the channel values at the given coordinates of the diff image
 func sumDiffPixelValues(diffIm image.Image, x, y int, invertAlpha bool) uint64 {
-	rgba := rgbaArrayUint8(diffIm.At(x, y))
+	rgba := RgbaArrayUint8(diffIm.At(x, y))
 	if invertAlpha {
 		rgba[3] = 255 - rgba[3]
 	}
