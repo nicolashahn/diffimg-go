@@ -4,14 +4,17 @@ Image differentiation tool similar to my python module and command line tool `di
 You may find it useful for testing image processing applications/services.
 
 ## CLI tool installation
-1. Clone the repo: `git clone https://github.com/nicolashahn/diffimg-go`
-2. `cd` into it: `cd diffimg-go`
-3. Add it to your `$GOPATH/bin`: `go install`
+
+```
+git clone https://github.com/nicolashahn/diffimg-go
+cd diffimg-go/cmd/diffimg
+go install # assuming your $GOPATH/bin is added to your PATH
+```
 
 ## Usage
 
 ```
-$ diffimg-go [-generate] [-ratio] [-invertalpha] IMAGE1 IMAGE2
+$ diffimg [-generate] [-ratio] [-invertalpha] IMAGE1 IMAGE2
 ```
 
 `IMAGE1` and `IMAGE2` are image files. They must be the same size.
