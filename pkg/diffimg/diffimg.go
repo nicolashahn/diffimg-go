@@ -12,6 +12,8 @@ import (
 	"os"
 )
 
+const maxChannelVal = 255
+
 //////////////////////
 // Helper functions //
 //////////////////////
@@ -75,17 +77,34 @@ func AbsDiffUint8(x, y uint8) uint8 {
 // (This is faster than creating a diff image first)  //
 ////////////////////////////////////////////////////////
 
+// NOTE for the following functions relating to generated diff images:
+// The ignoreAlpha param ignores the alpha channel when doing the diff ratio
+// calculation and generating a diff image (it sets alpha to max for all
+// pixels) - without it, if two pixels have different RGB values but the same
+// alpha, the resulting pixel will be invisible. For most images with an
+// "unused" alpha channel (ie the image is fully opaque) this means the diff
+// image will be fully transparent. In this case, ignoreAlpha should be set to
+// true. When diffing graphics like logos or other images that make use of a
+// transparent background, you may want to set ignoreAlpha to false to see
+// where the difference in overlap is. You will get a different diff ratio if
+// you set ignoreAlpha to true because the calculation is done with 3 channels
+// instead of 4.
+
 // Absolute difference between the channel values of the pixels at the same
 // coordinates (x,y) in im1, im2
 // Example:
-// RGBA for im1 at (x,y): (100, 100, 180, 255)
-// RGBA for im2 at (x,y): (120, 100, 100, 255)
-// abs(100-120) + abs(100-100) + abs(180-100) + abs(255-255)
+// RGBA for im1 at (x,y): (100, 100, 180, maxChannelVal)
+// RGBA for im2 at (x,y): (120, 100, 100, maxChannelVal)
+// abs(100-120) + abs(100-100) + abs(180-100) + abs(maxChannelVal-maxChannelVal)
 // 20 + 0 + 80 + 0 = 100
 // return 100
-func sumPixelDiff(im1, im2 image.Image, x, y int) uint16 {
+func sumPixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) uint16 {
 	rgba1 := RgbaArrayUint8(im1.At(x, y))
 	rgba2 := RgbaArrayUint8(im2.At(x, y))
+	if ignoreAlpha {
+		rgba1[3] = 0
+		rgba2[3] = 0
+	}
 	var pixDiffVal uint16
 	for i, _ := range rgba1 {
 		chanDiff := uint16(AbsDiffUint8(rgba1[i], rgba2[i]))
@@ -97,16 +116,20 @@ func sumPixelDiff(im1, im2 image.Image, x, y int) uint16 {
 // Calculate difference ratio between two Images
 // Adds up all the differences in each pixel's channel values, and averages
 // over all pixels
-func GetRatio(im1, im2 image.Image) float64 {
+func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
 	var sum uint64
 	width, height := GetWidthAndHeight(im1)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			sum += uint64(sumPixelDiff(im1, im2, x, y))
+			sum += uint64(sumPixelDiff(im1, im2, x, y, ignoreAlpha))
 		}
 	}
+	var numChannels = 4
+	if ignoreAlpha {
+		numChannels = 3
+	}
 	// Sum of max channel values for all pixels in the image
-	totalPixVals := (height * width) * (255 * 4)
+	totalPixVals := (height * width) * (maxChannelVal * numChannels)
 	return float64(sum) / float64(totalPixVals)
 }
 
@@ -114,20 +137,9 @@ func GetRatio(im1, im2 image.Image) float64 {
 // Generate diff image //
 /////////////////////////
 
-// NOTE for the following functions relating to generated diff images:
-// The invertAlpha param flips the alpha value - without it, if two pixels have
-// different RGB values but the same alpha, the resulting pixel will be
-// invisible. For most images with an unused alpha channel (ie the image is
-// fully opaque) this means the diff image will be fully transparent. In this
-// case, invertAlpha should be set to true. When diffing graphics like logos or
-// other images that make use of a transparent background, you may want to set
-// invertAlpha to false to see where the difference in overlap is. The param
-// does not affect the diff ratio, unless you use differing bool values in
-// CreateDiffImage() and GetRatioFromImage().
-
 // Return a color created from diffing each of the image's color values
 // at (x,y).
-func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
+func pixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) color.Color {
 	rgba1 := RgbaArrayUint8(im1.At(x, y))
 	rgba2 := RgbaArrayUint8(im2.At(x, y))
 	var rgba3 [4]uint8
@@ -135,8 +147,8 @@ func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
 		rgba3[i] = AbsDiffUint8(rgba1[i], rgba2[i])
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
-	if invertAlpha {
-		a = 255 - a
+	if ignoreAlpha {
+		a = maxChannelVal
 	}
 	newColor := color.RGBA{r, g, b, a}
 	return newColor
@@ -144,14 +156,14 @@ func pixelDiff(im1, im2 image.Image, x, y int, invertAlpha bool) color.Color {
 
 // Create a new image made by diffing each color value (RGBA) at each pixel in
 // im1 and im2
-func CreateDiffImage(im1, im2 image.Image, invertAlpha bool) image.Image {
+func CreateDiffImage(im1, im2 image.Image, ignoreAlpha bool) image.Image {
 	width, height := GetWidthAndHeight(im1)
 	upLeft := image.Point{0, 0}
 	lowRight := image.Point{width, height}
 	diffIm := image.NewRGBA(image.Rectangle{upLeft, lowRight})
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			newPixel := pixelDiff(im1, im2, x, y, invertAlpha)
+			newPixel := pixelDiff(im1, im2, x, y, ignoreAlpha)
 			diffIm.Set(x, y, newPixel)
 		}
 	}
@@ -163,10 +175,10 @@ func CreateDiffImage(im1, im2 image.Image, invertAlpha bool) image.Image {
 ////////////////////////////////////////////
 
 // Sum the channel values at the given coordinates of the diff image
-func sumDiffPixelValues(diffIm image.Image, x, y int, invertAlpha bool) uint64 {
+func sumDiffPixelValues(diffIm image.Image, x, y int, ignoreAlpha bool) uint64 {
 	rgba := RgbaArrayUint8(diffIm.At(x, y))
-	if invertAlpha {
-		rgba[3] = 255 - rgba[3]
+	if ignoreAlpha {
+		rgba[3] = 0
 	}
 	var sum uint64
 	for _, v := range rgba {
@@ -176,14 +188,18 @@ func sumDiffPixelValues(diffIm image.Image, x, y int, invertAlpha bool) uint64 {
 }
 
 // Get the ratio by summing the diff image's pixel channel values
-func GetRatioFromImage(diffIm image.Image, invertAlpha bool) float64 {
+func GetRatioFromImage(diffIm image.Image, ignoreAlpha bool) float64 {
 	width, height := GetWidthAndHeight(diffIm)
 	var sum uint64
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
-			sum += sumDiffPixelValues(diffIm, x, y, invertAlpha)
+			sum += sumDiffPixelValues(diffIm, x, y, ignoreAlpha)
 		}
 	}
-	totalPixVals := (height * width) * (255 * 4)
+	var numChannels = 4
+	if ignoreAlpha {
+		numChannels = 3
+	}
+	totalPixVals := (height * width) * (maxChannelVal * numChannels)
 	return float64(sum) / float64(totalPixVals)
 }

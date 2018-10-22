@@ -22,7 +22,7 @@ func main() {
 	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
 	returnRatioPtr := flag.Bool("ratio", false,
 		"Output a ratio (0-1.0) instead of the percentage sentence")
-	invertAlphaPtr := flag.Bool("invertalpha", false,
+	ignoreAlphaPtr := flag.Bool("ignorealpha", false,
 		"Invert the alpha channel for the generated diff image")
 
 	parseArgs()
@@ -35,13 +35,13 @@ func main() {
 
 	var ratio float64
 	if *createDiffImPtr {
-		diffIm := diffimg.CreateDiffImage(im1, im2, *invertAlphaPtr)
-		ratio = diffimg.GetRatioFromImage(diffIm, *invertAlphaPtr)
+		diffIm := diffimg.CreateDiffImage(im1, im2, *ignoreAlphaPtr)
+		ratio = diffimg.GetRatioFromImage(diffIm, *ignoreAlphaPtr)
 		newFile, _ := os.Create("diff.png")
 		png.Encode(newFile, diffIm)
 	} else {
 		// Just getting the ratio without creating a diffIm is faster
-		ratio = diffimg.GetRatio(im1, im2)
+		ratio = diffimg.GetRatio(im1, im2, *ignoreAlphaPtr)
 	}
 
 	if *returnRatioPtr {
