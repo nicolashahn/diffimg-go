@@ -5,18 +5,16 @@ Image differentiation tool similar to my python module and command line tool
 
 You may find it useful for testing image processing applications/services.
 
-## CLI tool installation
+## Installation
 
 ```
-git clone https://github.com/nicolashahn/diffimg-go
-cd diffimg-go/cmd/diffimg
-go install # assuming your $GOPATH/bin is added to your PATH
+go get github.com/nicolashahn/diffimg-go
 ```
 
 ## Usage
 
 ```
-$ diffimg [-generate] [-ratio] [-ignorealpha] IMAGE1 IMAGE2
+$ diffimg-go [-generate] [-ratio] [-ignorealpha] IMAGE1 IMAGE2
 ```
 
 `IMAGE1` and `IMAGE2` are image files. They must be the same size.
@@ -35,24 +33,26 @@ It gives a different diff ratio because the calculation is now being done
 with 3 instead of 4 channels.
 
 ## Examples
-The images used in these examples are [here](test/data/mario-circle-cs.png) and [here](test/data/mario-circle-node.png).
+The images used in these examples are [here](test/data/mario-circle-cs.png)
+and [here](test/data/mario-circle-node.png).
+
 ```
-$ diffimg test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go test/data/mario-circle-cs.png test/data/mario-circle-node.png
 Images differ by 0.21239256857598682%
 
-$ diffimg -ratio test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go -ratio test/data/mario-circle-cs.png test/data/mario-circle-node.png
 0.002123925685759868
 
-$ diffimg -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-node.png
 Images differ by 0.1747815632523059%
 
-$ diffimg -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
 $ open diff.png
 ```
 ![Mario diff](examples/mario_diff.png)
 
 ```
-$ diffimg -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
 $ open diff.png
 ```
 ![Mario diff with -ignorealpha](examples/mario_ignorealpha_diff.png)
