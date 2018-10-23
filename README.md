@@ -47,12 +47,14 @@ $ diffimg-go -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-n
 Images differ by 0.1747815632523059%
 
 $ diffimg-go -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
+Images differ by 0.21239256857598682%
 $ open diff.png
 ```
 ![Mario diff](examples/mario_diff.png)
 
 ```
-$ diffimg-go -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
+$ diffimg-go -generate -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-node.png
+Images differ by 0.21239256857598682%
 $ open diff.png
 ```
 ![Mario diff with -ignorealpha](examples/mario_ignorealpha_diff.png)
