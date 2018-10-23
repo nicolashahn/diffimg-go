@@ -1,8 +1,9 @@
-package diffimg_test
+package diffimg
 
 import (
-	"github.com/nicolashahn/diffimg-go/pkg/diffimg"
 	"image/color"
+	_ "image/jpeg"
+	_ "image/png"
 	"testing"
 )
 
@@ -10,7 +11,7 @@ import (
 // Templated tests for each function, note the lowercase `test` in the name
 
 func testAbsDiffUint8(t *testing.T, x, y, expected uint8) {
-	val := diffimg.AbsDiffUint8(x, y)
+	val := absDiffUint8(x, y)
 	if val != expected {
 		t.Errorf("AbsDiffUint8(%v, %v): expected %v, got %v\n",
 			x, y, 10, val)
@@ -19,7 +20,7 @@ func testAbsDiffUint8(t *testing.T, x, y, expected uint8) {
 
 func testRgbaArrayUint8(t *testing.T, r, g, b, a uint8, expected [4]uint8) {
 	col := color.RGBA{r, g, b, a}
-	colArr := diffimg.RgbaArrayUint8(col)
+	colArr := rgbaArrayUint8(col)
 	if colArr != expected {
 		t.Errorf("RgbaArrayUint8(1,2,3,4): expected %v, got %v\n",
 			expected, colArr)
@@ -28,9 +29,9 @@ func testRgbaArrayUint8(t *testing.T, r, g, b, a uint8, expected [4]uint8) {
 
 func testGetRatio(
 	t *testing.T, im1file, im2file string, ignoreAlpha bool, expected float64) {
-	im1 := diffimg.LoadImage(im1file)
-	im2 := diffimg.LoadImage(im2file)
-	ratio := diffimg.GetRatio(im1, im2, ignoreAlpha)
+	im1 := LoadImage(im1file)
+	im2 := LoadImage(im2file)
+	ratio := GetRatio(im1, im2, ignoreAlpha)
 	if ratio != expected {
 		t.Errorf("GetRatio(%v, %v): expected %v, got %v\n",
 			im1file, im2file, expected, ratio)
@@ -39,10 +40,10 @@ func testGetRatio(
 
 func testGetRatioFromImage(
 	t *testing.T, im1file, im2file string, ignoreAlpha bool, expected float64) {
-	im1 := diffimg.LoadImage(im1file)
-	im2 := diffimg.LoadImage(im2file)
-	diffIm := diffimg.CreateDiffImage(im1, im2, ignoreAlpha)
-	ratio := diffimg.GetRatioFromImage(diffIm, ignoreAlpha)
+	im1 := LoadImage(im1file)
+	im2 := LoadImage(im2file)
+	diffIm := CreateDiffImage(im1, im2, ignoreAlpha)
+	ratio := GetRatioFromImage(diffIm, ignoreAlpha)
 	if ratio != expected {
 		t.Errorf("GetRatioFromImage(%v, %v): expected %v, got %v\n",
 			im1file, im2file, expected, ratio)
@@ -72,21 +73,21 @@ func TestAbsDiffUint8(t *testing.T) {
 
 func TestGetRatio(t *testing.T) {
 	// Pure black vs pure white image, both opaque
-	testBothRatioMethods(t, "data/black.png", "data/white.png", false, 0.75)
+	testBothRatioMethods(t, "../../test/data/black.png", "../../test/data/white.png", false, 0.75)
 	// Same image
-	testBothRatioMethods(t, "data/im1.png", "data/im1.png", false, 0)
+	testBothRatioMethods(t, "../../test/data/im1.png", "../../test/data/im1.png", false, 0)
 	// Image with non-homogenous alpha
-	testBothRatioMethods(t, "data/mario-circle-node.png",
-		"data/mario-circle-cs.png",
+	testBothRatioMethods(t, "../../test/data/mario-circle-node.png",
+		"../../test/data/mario-circle-cs.png",
 		false,
 		0.002123925685759868)
 }
 
 func TestGetRatioIgnoreAlpha(t *testing.T) {
-	testBothRatioMethods(t, "data/black.png", "data/white.png", true, 1.0)
-	testBothRatioMethods(t, "data/im1.png", "data/im1.png", true, 0)
-	testBothRatioMethods(t, "data/mario-circle-node.png",
-		"data/mario-circle-cs.png",
+	testBothRatioMethods(t, "../../test/data/black.png", "../../test/data/white.png", true, 1.0)
+	testBothRatioMethods(t, "../../test/data/im1.png", "../../test/data/im1.png", true, 0)
+	testBothRatioMethods(t, "../../test/data/mario-circle-node.png",
+		"../../test/data/mario-circle-cs.png",
 		true,
 		0.0017478156325230589)
 }

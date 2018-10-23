@@ -1,14 +1,11 @@
-// This package provides image diffing tools. You can create a difference image
-// from two given images, or find their difference ratio/percentage.
-
+// Package diffimg provides image diffing tools. You can create a difference
+// image from two given images, or quantify their difference as a ratio/%.
 package diffimg
 
 import (
 	"fmt"
 	"image"
 	"image/color"
-	_ "image/jpeg"
-	_ "image/png"
 	"os"
 )
 
@@ -18,39 +15,20 @@ const maxChannelVal = 255
 // Helper functions //
 //////////////////////
 
-func CheckErr(err error) {
+func checkErr(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }
 
-func LoadImage(filepath string) image.Image {
-	file, err := os.Open(filepath)
-	CheckErr(err)
-	defer file.Close()
-	im, _, err := image.Decode(file)
-	CheckErr(err)
-	return im
-}
-
-func GetWidthAndHeight(im image.Image) (int, int) {
+func getWidthAndHeight(im image.Image) (int, int) {
 	width := im.Bounds().Max.X
 	height := im.Bounds().Max.Y
 	return width, height
 }
 
-func CheckDimensions(im1, im2 image.Image) {
-	if im1.Bounds() != im2.Bounds() {
-		im1w, im1h := GetWidthAndHeight(im1)
-		im2w, im2h := GetWidthAndHeight(im2)
-		fmt.Fprintf(os.Stderr, "Image dimensions are different: %vx%v, %vx%v\n",
-			im1w, im1h, im2w, im2h)
-		os.Exit(1)
-	}
-}
-
-func RgbaArrayUint8(col color.Color) [4]uint8 {
+func rgbaArrayUint8(col color.Color) [4]uint8 {
 	// The values are stored as uint8, but returned by RGBA() as uint32 for
 	// compatibility, we need to manually convert back to uint8
 	// See https://golang.org/src/image/color/color.go
@@ -62,14 +40,35 @@ func RgbaArrayUint8(col color.Color) [4]uint8 {
 	return [4]uint8{uint8(r), uint8(g), uint8(b), uint8(a)}
 }
 
-// Abs(x - y)
-func AbsDiffUint8(x, y uint8) uint8 {
+// abs(x - y)
+func absDiffUint8(x, y uint8) uint8 {
 	// int16 cast because result of subtraction could be negative
 	diff := int16(x) - int16(y)
 	if diff < 0 {
 		return uint8(-diff)
 	}
 	return uint8(diff)
+}
+
+// LoadImage opens a file and tries to decode it as an image.
+func LoadImage(filepath string) image.Image {
+	file, err := os.Open(filepath)
+	checkErr(err)
+	defer file.Close()
+	im, _, err := image.Decode(file)
+	checkErr(err)
+	return im
+}
+
+// CheckDimensions ensures that the images have the same width and height.
+func CheckDimensions(im1, im2 image.Image) {
+	if im1.Bounds() != im2.Bounds() {
+		im1w, im1h := getWidthAndHeight(im1)
+		im2w, im2h := getWidthAndHeight(im2)
+		fmt.Fprintf(os.Stderr, "Image dimensions are different: %vx%v, %vx%v\n",
+			im1w, im1h, im2w, im2h)
+		os.Exit(1)
+	}
 }
 
 ////////////////////////////////////////////////////////
@@ -90,8 +89,8 @@ func AbsDiffUint8(x, y uint8) uint8 {
 // you set ignoreAlpha to true because the calculation is done with 3 channels
 // instead of 4.
 
-// Absolute difference between the channel values of the pixels at the same
-// coordinates (x,y) in im1, im2
+// sumPixelDiff gets the absolute difference between the channel values of the
+// pixels at the same coordinates (x,y) in im1, im2
 // Example:
 // RGBA for im1 at (x,y): (100, 100, 180, maxChannelVal)
 // RGBA for im2 at (x,y): (120, 100, 100, maxChannelVal)
@@ -99,26 +98,26 @@ func AbsDiffUint8(x, y uint8) uint8 {
 // 20 + 0 + 80 + 0 = 100
 // return 100
 func sumPixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) uint16 {
-	rgba1 := RgbaArrayUint8(im1.At(x, y))
-	rgba2 := RgbaArrayUint8(im2.At(x, y))
+	rgba1 := rgbaArrayUint8(im1.At(x, y))
+	rgba2 := rgbaArrayUint8(im2.At(x, y))
 	if ignoreAlpha {
 		rgba1[3] = 0
 		rgba2[3] = 0
 	}
 	var pixDiffVal uint16
-	for i, _ := range rgba1 {
-		chanDiff := uint16(AbsDiffUint8(rgba1[i], rgba2[i]))
+	for i := range rgba1 {
+		chanDiff := uint16(absDiffUint8(rgba1[i], rgba2[i]))
 		pixDiffVal += chanDiff
 	}
 	return pixDiffVal
 }
 
-// Calculate difference ratio between two Images
+// GetRatio calculates difference ratio between two Images
 // Adds up all the differences in each pixel's channel values, and averages
-// over all pixels
+// over all pixels.
 func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
 	var sum uint64
-	width, height := GetWidthAndHeight(im1)
+	width, height := getWidthAndHeight(im1)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			sum += uint64(sumPixelDiff(im1, im2, x, y, ignoreAlpha))
@@ -137,14 +136,14 @@ func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
 // Generate diff image //
 /////////////////////////
 
-// Return a color created from diffing each of the image's color values
-// at (x,y).
+// pixelDiff returns a color created from diffing each of the image's color
+// values at (x,y).
 func pixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) color.Color {
-	rgba1 := RgbaArrayUint8(im1.At(x, y))
-	rgba2 := RgbaArrayUint8(im2.At(x, y))
+	rgba1 := rgbaArrayUint8(im1.At(x, y))
+	rgba2 := rgbaArrayUint8(im2.At(x, y))
 	var rgba3 [4]uint8
-	for i, _ := range rgba1 {
-		rgba3[i] = AbsDiffUint8(rgba1[i], rgba2[i])
+	for i := range rgba1 {
+		rgba3[i] = absDiffUint8(rgba1[i], rgba2[i])
 	}
 	r, g, b, a := rgba3[0], rgba3[1], rgba3[2], rgba3[3]
 	if ignoreAlpha {
@@ -154,10 +153,10 @@ func pixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) color.Color {
 	return newColor
 }
 
-// Create a new image made by diffing each color value (RGBA) at each pixel in
-// im1 and im2
+// CreateDiffImage creates a new image made by diffing each color value (RGBA)
+// at each pixel in im1 and im2.
 func CreateDiffImage(im1, im2 image.Image, ignoreAlpha bool) image.Image {
-	width, height := GetWidthAndHeight(im1)
+	width, height := getWidthAndHeight(im1)
 	upLeft := image.Point{0, 0}
 	lowRight := image.Point{width, height}
 	diffIm := image.NewRGBA(image.Rectangle{upLeft, lowRight})
@@ -174,9 +173,10 @@ func CreateDiffImage(im1, im2 image.Image, ignoreAlpha bool) image.Image {
 // Get difference ratio from a diff image //
 ////////////////////////////////////////////
 
-// Sum the channel values at the given coordinates of the diff image
+// sumDiffPixelValues sums the channel values at the given coordinates of the
+// diff image.
 func sumDiffPixelValues(diffIm image.Image, x, y int, ignoreAlpha bool) uint64 {
-	rgba := RgbaArrayUint8(diffIm.At(x, y))
+	rgba := rgbaArrayUint8(diffIm.At(x, y))
 	if ignoreAlpha {
 		rgba[3] = 0
 	}
@@ -187,9 +187,10 @@ func sumDiffPixelValues(diffIm image.Image, x, y int, ignoreAlpha bool) uint64 {
 	return sum
 }
 
-// Get the ratio by summing the diff image's pixel channel values
+// GetRatioFromImage gets the ratio by summing the diff image's pixel channel
+// values.
 func GetRatioFromImage(diffIm image.Image, ignoreAlpha bool) float64 {
-	width, height := GetWidthAndHeight(diffIm)
+	width, height := getWidthAndHeight(diffIm)
 	var sum uint64
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
