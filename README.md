@@ -1,7 +1,7 @@
 # diffimg-go
 
-Image differentiation tool similar to my python module and command line tool
-`diffimg`: https://github.com/nicolashahn/diffimg
+Image differentiation tool like [the homonymous python 
+module.](https://github.com/nicolashahn/diffimg)
 
 You may find it useful for testing image processing applications/services.
 
