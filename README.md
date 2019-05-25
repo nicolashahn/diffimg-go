@@ -14,15 +14,12 @@ go get github.com/nicolashahn/diffimg-go
 ## Usage
 
 ```
-$ diffimg-go [-generate] [-ratio] [-ignorealpha] IMAGE1 IMAGE2
+$ diffimg-go [-generate] [-ignorealpha] IMAGE1 IMAGE2
 ```
 
 `IMAGE1` and `IMAGE2` are image files. They must be the same size.
 
 `-generate` creates a diff image at `diff.png`.
-
-`-ratio` returns a `float` ratio instead of the sentence `Images differ by
-X.XX%`
 
 `-ignorealpha` ignores the alpha channel for the ratio calculation, and if
 generating a diff image, sets the alpha value for all pixels to max. If both
@@ -38,23 +35,20 @@ and [here](test/data/mario-circle-node.png).
 
 ```
 $ diffimg-go test/data/mario-circle-cs.png test/data/mario-circle-node.png
-Images differ by 0.21239256857598682%
-
-$ diffimg-go -ratio test/data/mario-circle-cs.png test/data/mario-circle-node.png
 0.002123925685759868
 
 $ diffimg-go -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-node.png
-Images differ by 0.1747815632523059%
+0.0017478156325230589
 
 $ diffimg-go -generate test/data/mario-circle-cs.png test/data/mario-circle-node.png
-Images differ by 0.21239256857598682%
+0.002123925685759868
 $ open diff.png
 ```
 ![Mario diff](examples/mario_diff.png)
 
 ```
 $ diffimg-go -generate -ignorealpha test/data/mario-circle-cs.png test/data/mario-circle-node.png
-Images differ by 0.21239256857598682%
+0.002123925685759868
 $ open diff.png
 ```
 ![Mario diff with -ignorealpha](examples/mario_ignorealpha_diff.png)
