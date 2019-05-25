@@ -11,7 +11,7 @@ import (
 func parseArgs() {
 	flag.Parse()
 	if len(flag.Args()) != 2 {
-		fmt.Fprintln(os.Stderr, "Require exactly two args: filename1, filename2")
+		fmt.Fprintln(os.Stderr, "Requires two positional args: filename1, filename2")
 		os.Exit(1)
 	}
 }
@@ -20,10 +20,9 @@ func main() {
 
 	// Command line flags
 	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
-	returnRatioPtr := flag.Bool("ratio", false,
-		"Output a ratio (0-1.0) instead of the percentage sentence")
 	ignoreAlphaPtr := flag.Bool("ignorealpha", false,
-		"Invert the alpha channel for the generated diff image")
+		`Ignore the alpha channel when doing the ratio calculation, or if 
+generating an image, invert the alpha channel for the generated image`)
 
 	parseArgs()
 
@@ -44,10 +43,5 @@ func main() {
 		ratio = diffimg.GetRatio(im1, im2, *ignoreAlphaPtr)
 	}
 
-	if *returnRatioPtr {
-		fmt.Println(ratio)
-	} else {
-		percentage := ratio * 100
-		fmt.Printf("Images differ by %v%%\n", percentage)
-	}
+	fmt.Println(ratio)
 }
