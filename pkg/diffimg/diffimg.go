@@ -42,12 +42,10 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 
 // abs(x - y)
 func absDiffUint8(x, y uint8) uint8 {
-	// int16 cast because result of subtraction could be negative
-	diff := int16(x) - int16(y)
-	if diff < 0 {
-		return uint8(-diff)
+	if x > y {
+		return x - y;
 	}
-	return uint8(diff)
+	return y - x;
 }
 
 // LoadImage opens a file and tries to decode it as an image.
