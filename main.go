@@ -19,10 +19,13 @@ func parseArgs() {
 func main() {
 
 	// Command line flags
-	createDiffImPtr := flag.Bool("generate", false, "Generate a diff image file")
+	createDiffImPtr := flag.String("filename", "",
+		`Generate a diff image and save it at this filename.
+(should have a .png extension)
+If not passed, only a ratio will be returned.`)
 	ignoreAlphaPtr := flag.Bool("ignorealpha", false,
 		`Ignore the alpha channel when doing the ratio calculation, or if 
-generating an image, invert the alpha channel for the generated image`)
+generating an image, invert the alpha channel for the generated image.`)
 
 	parseArgs()
 
@@ -33,10 +36,10 @@ generating an image, invert the alpha channel for the generated image`)
 	diffimg.CheckDimensions(im1, im2)
 
 	var ratio float64
-	if *createDiffImPtr {
+	if *createDiffImPtr != "" {
 		diffIm := diffimg.CreateDiffImage(im1, im2, *ignoreAlphaPtr)
 		ratio = diffimg.GetRatioFromImage(diffIm, *ignoreAlphaPtr)
-		newFile, _ := os.Create("diff.png")
+		newFile, _ := os.Create(*createDiffImPtr)
 		png.Encode(newFile, diffIm)
 	} else {
 		// Just getting the ratio without creating a diffIm is faster
