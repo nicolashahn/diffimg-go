@@ -10,11 +10,13 @@ import (
 )
 
 func main() {
+	// Parse flags
 	diffOutput := flag.String("filename", "", "Generate a diff image and save it at this filename.\n(should have a .png extension)\nIf not passed, only a ratio will be returned.")
 	ignoreAlpha := flag.Bool("ignorealpha", false, "Ignore the alpha channel when doing the ratio calculation, or if \ngenerating an image, invert the alpha channel for the generated image.")
 
 	flag.Parse()
 
+	// Check that both images have been supplied
 	apath, bpath := flag.Arg(0), flag.Arg(1)
 	if apath == "" || bpath == "" {
 		fmt.Fprintln(os.Stderr, "requires two images as arguments")
@@ -22,6 +24,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Load Images
 	a, aerr := imgutil.Load(apath)
 	b, berr := imgutil.Load(bpath)
 	if aerr != nil || berr != nil {
