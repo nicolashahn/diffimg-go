@@ -2,13 +2,11 @@ package diffimg
 
 import (
 	"fmt"
-	"image"
 	"image/color"
-	_ "image/jpeg"
-	_ "image/png"
-	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/nicolashahn/diffimg-go/imgutil"
 )
 
 func Test(t *testing.T) {
@@ -30,11 +28,11 @@ func Test(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v-%v: IgnoreAlpha:%v", test.A, test.B, test.IgnoreAlpha), func(t *testing.T) {
-			a, err := LoadImage(filepath.Join("../testdata", test.A))
+			a, err := imgutil.Load(filepath.Join("../testdata", test.A))
 			if err != nil {
 				t.Fatal(err)
 			}
-			b, err := LoadImage(filepath.Join("../testdata", test.B))
+			b, err := imgutil.Load(filepath.Join("../testdata", test.B))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -51,19 +49,6 @@ func Test(t *testing.T) {
 			}
 		})
 	}
-}
-
-// LoadImage opens a file and tries to decode it as an image.
-func LoadImage(filepath string) (image.Image, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	m, _, err := image.Decode(file)
-	return m, err
 }
 
 func TestRgbaArrayUint8(t *testing.T) {

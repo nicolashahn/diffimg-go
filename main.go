@@ -3,12 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"image"
-	_ "image/jpeg"
-	"image/png"
 	"os"
 
 	"github.com/nicolashahn/diffimg-go/diffimg"
+	"github.com/nicolashahn/diffimg-go/imgutil"
 )
 
 func main() {
@@ -24,8 +22,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	a, aerr := LoadImage(apath)
-	b, berr := LoadImage(bpath)
+	a, aerr := imgutil.Load(apath)
+	b, berr := imgutil.Load(bpath)
 	if aerr != nil || berr != nil {
 		if aerr != nil {
 			fmt.Fprintf(os.Stderr, "failed to load %q: %v\n", apath, aerr)
@@ -43,25 +41,16 @@ func main() {
 	if *diffOutput != "" {
 		diffIm := diffimg.CreateDiffImage(a, b, *ignoreAlpha)
 		ratio = diffimg.GetRatioFromImage(diffIm, *ignoreAlpha)
-		newFile, _ := os.Create(*diffOutput)
-		png.Encode(newFile, diffIm)
+
+		err := imgutil.WritePNG(*diffOutput)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write %q: %v\n", *diffoutput, berr)
+			os.Exit(1)
+		}
 	} else {
 		// Just getting the ratio without creating a diffIm is faster
 		ratio = diffimg.GetRatio(a, b, *ignoreAlpha)
 	}
 
 	fmt.Println(ratio)
-}
-
-// LoadImage opens a file and tries to decode it as an image.
-func LoadImage(filepath string) (image.Image, error) {
-	file, err := os.Open(filepath)
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-
-	m, _, err := image.Decode(file)
-	return m, err
 }
