@@ -112,6 +112,9 @@ func sumPixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) uint16 {
 }
 
 func toRGBA(im image.Image) *image.RGBA {
+	if rgba, ok := im.(*image.RGBA); ok {
+		return rgba
+	}
 	rect := im.Bounds()
 	rgba := image.NewRGBA(rect)
 	draw.Draw(rgba, rect, im, rect.Min, draw.Src)
