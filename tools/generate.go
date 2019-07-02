@@ -4,22 +4,27 @@
 
 package main
 
-import "os"
-import "image"
-import "image/png"
-import "image/color"
+import (
+	"fmt"
+	"image"
+	"image/color"
+	"os"
+
+	"github.com/nicolashahn/diffimg-go/imgutil"
+)
 
 func main() {
-	w, h := 2,2
-	upLeft := image.Point{0,0}
-	lowRight := image.Point{w,h}
-	im := image.NewRGBA(image.Rectangle{upLeft,lowRight})
-	for y := 0; y < h; y++ {
-		for x := 0; x < h; x++ {
-			pix := color.NRGBA64{0,0,65535,40000}
-			im.Set(x,y,pix)
+	size := image.Point{2, 2}
+	m := image.NewRGBA(image.Rectangle{image.ZP, size})
+	for y := 0; y < size.Y; y++ {
+		for x := 0; x < size.X; x++ {
+			m.SetRGBA(x, y, color.RGBA{0, 0, 255, 156})
 		}
 	}
-	newFile, _ := os.Create("images/im2.png")
-	png.Encode(newFile, im)
+
+	outfile := "images/im2.png"
+	err := imgutil.WritePNG(outfile, m)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to write %q: %v\n", outfile, err)
+	}
 }

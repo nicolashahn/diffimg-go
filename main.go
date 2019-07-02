@@ -3,48 +3,61 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/nicolashahn/diffimg-go/pkg/diffimg"
-	"image/png"
 	"os"
+
+	"github.com/nicolashahn/diffimg-go/diffimg"
+	"github.com/nicolashahn/diffimg-go/imgutil"
 )
 
-func parseArgs() {
+func main() {
+	// Parse flags
+	diffOutput := flag.String("filename", "", "Generate a diff image and save it at this filename.\n(should have a .png extension)\nIf not passed, only a ratio will be returned.")
+	ignoreAlpha := flag.Bool("ignorealpha", false, "Ignore the alpha channel when doing the ratio calculation, or if \ngenerating an image, invert the alpha channel for the generated image.")
+
 	flag.Parse()
-	if len(flag.Args()) != 2 {
-		fmt.Fprintln(os.Stderr, "Requires two positional args: filename1, filename2")
+
+	// Check that both images have been supplied
+	apath, bpath := flag.Arg(0), flag.Arg(1)
+	if apath == "" || bpath == "" {
+		fmt.Fprintln(os.Stderr, "requires two images as arguments")
+		flag.Usage()
 		os.Exit(1)
 	}
-}
 
-func main() {
-
-	// Command line flags
-	createDiffImPtr := flag.String("filename", "",
-		`Generate a diff image and save it at this filename.
-(should have a .png extension)
-If not passed, only a ratio will be returned.`)
-	ignoreAlphaPtr := flag.Bool("ignorealpha", false,
-		`Ignore the alpha channel when doing the ratio calculation, or if 
-generating an image, invert the alpha channel for the generated image.`)
-
-	parseArgs()
-
-	im1 := diffimg.LoadImage(flag.Args()[0])
-	im2 := diffimg.LoadImage(flag.Args()[1])
-
-	// Ensure images are compatible for diffing
-	diffimg.CheckDimensions(im1, im2)
-
-	var ratio float64
-	if *createDiffImPtr != "" {
-		diffIm := diffimg.CreateDiffImage(im1, im2, *ignoreAlphaPtr)
-		ratio = diffimg.GetRatioFromImage(diffIm, *ignoreAlphaPtr)
-		newFile, _ := os.Create(*createDiffImPtr)
-		png.Encode(newFile, diffIm)
-	} else {
-		// Just getting the ratio without creating a diffIm is faster
-		ratio = diffimg.GetRatio(im1, im2, *ignoreAlphaPtr)
+	// Load Images
+	a, aerr := imgutil.Load(apath)
+	b, berr := imgutil.Load(bpath)
+	if aerr != nil || berr != nil {
+		if aerr != nil {
+			fmt.Fprintf(os.Stderr, "failed to load %q: %v\n", apath, aerr)
+		}
+		if berr != nil {
+			fmt.Fprintf(os.Stderr, "failed to load %q: %v\n", bpath, berr)
+		}
+		os.Exit(1)
 	}
 
-	fmt.Println(ratio)
+	if *diffOutput != "" {
+		diff, ratio, err := diffimg.RGBA(a, b, *ignoreAlpha)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to diff: %v\n", err)
+			os.Exit(1)
+		}
+
+		err = imgutil.WritePNG(*diffOutput, diff)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write %q: %v\n", *diffOutput, berr)
+			os.Exit(1)
+		}
+
+		fmt.Println(ratio)
+	} else {
+		ratio, err := diffimg.RatioRGBA(a, b, *ignoreAlpha)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to diff: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(ratio)
+	}
 }
