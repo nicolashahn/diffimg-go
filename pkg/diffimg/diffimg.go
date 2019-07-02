@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"image/draw"
 	"os"
 )
 
@@ -43,9 +44,9 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 // abs(x - y)
 func absDiffUint8(x, y uint8) uint8 {
 	if x > y {
-		return x - y;
+		return x - y
 	}
-	return y - x;
+	return y - x
 }
 
 // LoadImage opens a file and tries to decode it as an image.
@@ -110,24 +111,33 @@ func sumPixelDiff(im1, im2 image.Image, x, y int, ignoreAlpha bool) uint16 {
 	return pixDiffVal
 }
 
+func toRGBA(im image.Image) *image.RGBA {
+	rect := im.Bounds()
+	rgba := image.NewRGBA(rect)
+	draw.Draw(rgba, rect, im, rect.Min, draw.Src)
+	return rgba
+}
+
 // GetRatio calculates difference ratio between two Images
 // Adds up all the differences in each pixel's channel values, and averages
 // over all pixels.
 func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
+	rgba1, rgba2 := toRGBA(im1), toRGBA(im2)
+
 	var sum uint64
-	width, height := getWidthAndHeight(im1)
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			sum += uint64(sumPixelDiff(im1, im2, x, y, ignoreAlpha))
+	for i := range rgba1.Pix {
+		if ignoreAlpha && i%3 == 0 {
+			continue
 		}
+		sum += uint64(absDiffUint8(rgba1.Pix[i], rgba2.Pix[i]))
 	}
-	var numChannels = 4
+
+	max := float64(len(rgba1.Pix)) * maxChannelVal
 	if ignoreAlpha {
-		numChannels = 3
+		max *= 3 / 4 // only RGB, not A
 	}
-	// Sum of max channel values for all pixels in the image
-	totalPixVals := (height * width) * (maxChannelVal * numChannels)
-	return float64(sum) / float64(totalPixVals)
+
+	return float64(sum) / max
 }
 
 /////////////////////////
