@@ -20,12 +20,12 @@ func RatioRGBA(a, b image.Image, ignoreAlpha bool) (float64, error) {
 	size := a.Bounds().Size()
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
-			argba := rgba(a.At(x, y).RGBA())
-			brgba := rgba(b.At(x, y).RGBA())
-			drgba := absdiff(argba, brgba)
+			acol := rgba(a.At(x, y).RGBA())
+			bcol := rgba(b.At(x, y).RGBA())
+			diff := absdiff(acol, bcol)
 
-			totalColor += uint64(drgba.R) + uint64(drgba.G) + uint64(drgba.B)
-			totalAlpha += uint64(drgba.A)
+			totalColor += uint64(diff.R) + uint64(diff.G) + uint64(diff.B)
+			totalAlpha += uint64(diff.A)
 		}
 	}
 
@@ -48,17 +48,17 @@ func RGBA(a, b image.Image, ignoreAlpha bool) (image.Image, float64, error) {
 	size := a.Bounds().Size()
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
-			argba := rgba(a.At(x, y).RGBA())
-			brgba := rgba(b.At(x, y).RGBA())
-			drgba := absdiff(argba, brgba)
+			acol := rgba(a.At(x, y).RGBA())
+			bcol := rgba(b.At(x, y).RGBA())
+			diff := absdiff(acol, bcol)
 
-			totalColor += uint64(drgba.R) + uint64(drgba.G) + uint64(drgba.B)
-			totalAlpha += uint64(drgba.A)
+			totalColor += uint64(diff.R) + uint64(diff.G) + uint64(diff.B)
+			totalAlpha += uint64(diff.A)
 
 			if ignoreAlpha {
-				drgba.A = 0xFF
+				diff.A = 0xFF
 			}
-			m.SetRGBA(x, y, drgba)
+			m.SetRGBA(x, y, diff)
 		}
 	}
 
