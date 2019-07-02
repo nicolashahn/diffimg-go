@@ -2,9 +2,11 @@ package diffimg
 
 import (
 	"fmt"
+	"image"
 	"image/color"
 	_ "image/jpeg"
 	_ "image/png"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -28,8 +30,14 @@ func Test(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%v-%v: IgnoreAlpha:%v", test.A, test.B, test.IgnoreAlpha), func(t *testing.T) {
-			a := LoadImage(filepath.Join("../../testdata", test.A))
-			b := LoadImage(filepath.Join("../../testdata", test.B))
+			a, err := LoadImage(filepath.Join("../testdata", test.A))
+			if err != nil {
+				t.Fatal(err)
+			}
+			b, err := LoadImage(filepath.Join("../testdata", test.B))
+			if err != nil {
+				t.Fatal(err)
+			}
 
 			ratio := GetRatio(a, b, test.IgnoreAlpha)
 			if ratio != test.Expected {
@@ -43,6 +51,19 @@ func Test(t *testing.T) {
 			}
 		})
 	}
+}
+
+// LoadImage opens a file and tries to decode it as an image.
+func LoadImage(filepath string) (image.Image, error) {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+
+	m, _, err := image.Decode(file)
+	return m, err
 }
 
 func TestRgbaArrayUint8(t *testing.T) {

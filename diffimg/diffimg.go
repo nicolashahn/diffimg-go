@@ -43,19 +43,9 @@ func rgbaArrayUint8(col color.Color) [4]uint8 {
 // abs(x - y)
 func absDiffUint8(x, y uint8) uint8 {
 	if x > y {
-		return x - y;
+		return x - y
 	}
-	return y - x;
-}
-
-// LoadImage opens a file and tries to decode it as an image.
-func LoadImage(filepath string) image.Image {
-	file, err := os.Open(filepath)
-	checkErr(err)
-	defer file.Close()
-	im, _, err := image.Decode(file)
-	checkErr(err)
-	return im
+	return y - x
 }
 
 // CheckDimensions ensures that the images have the same width and height.
