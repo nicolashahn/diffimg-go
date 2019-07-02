@@ -129,7 +129,7 @@ func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
 
 	var sum uint64
 	for i := range rgba1.Pix {
-		if ignoreAlpha && i%3 == 0 {
+		if ignoreAlpha && (i+1)%4 == 0 {
 			continue
 		}
 		sum += uint64(absDiffUint8(rgba1.Pix[i], rgba2.Pix[i]))
