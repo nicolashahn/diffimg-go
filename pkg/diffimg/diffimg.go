@@ -137,7 +137,7 @@ func GetRatio(im1, im2 image.Image, ignoreAlpha bool) float64 {
 
 	max := float64(len(rgba1.Pix)) * maxChannelVal
 	if ignoreAlpha {
-		max *= 3 / 4 // only RGB, not A
+		max *= 0.75 // only RGB, not A
 	}
 
 	return float64(sum) / max
