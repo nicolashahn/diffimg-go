@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/nicolashahn/diffimg-go/pkg/diffimg"
 	"image/png"
 	"os"
+
+	"github.com/nicolashahn/diffimg-go/diffimg"
 )
 
 func parseArgs() {
