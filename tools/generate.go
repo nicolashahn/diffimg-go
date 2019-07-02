@@ -18,8 +18,7 @@ func main() {
 	m := image.NewRGBA(image.Rectangle{image.ZP, size})
 	for y := 0; y < size.Y; y++ {
 		for x := 0; x < size.X; x++ {
-			pix := color.NRGBA64{0, 0, 65535, 40000}
-			m.Set(x, y, pix)
+			m.SetRGBA(x, y, color.RGBA{0, 0, 255, 156})
 		}
 	}
 
