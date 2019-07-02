@@ -73,21 +73,21 @@ func TestAbsDiffUint8(t *testing.T) {
 
 func TestGetRatio(t *testing.T) {
 	// Pure black vs pure white image, both opaque
-	testBothRatioMethods(t, "../../test/data/black.png", "../../test/data/white.png", false, 0.75)
+	testBothRatioMethods(t, "../../testdata/black.png", "../../testdata/white.png", false, 0.75)
 	// Same image
-	testBothRatioMethods(t, "../../test/data/im1.png", "../../test/data/im1.png", false, 0)
+	testBothRatioMethods(t, "../../testdata/im1.png", "../../testdata/im1.png", false, 0)
 	// Image with non-homogenous alpha
-	testBothRatioMethods(t, "../../test/data/mario-circle-node.png",
-		"../../test/data/mario-circle-cs.png",
+	testBothRatioMethods(t, "../../testdata/mario-circle-node.png",
+		"../../testdata/mario-circle-cs.png",
 		false,
 		0.002123925685759868)
 }
 
 func TestGetRatioIgnoreAlpha(t *testing.T) {
-	testBothRatioMethods(t, "../../test/data/black.png", "../../test/data/white.png", true, 1.0)
-	testBothRatioMethods(t, "../../test/data/im1.png", "../../test/data/im1.png", true, 0)
-	testBothRatioMethods(t, "../../test/data/mario-circle-node.png",
-		"../../test/data/mario-circle-cs.png",
+	testBothRatioMethods(t, "../../testdata/black.png", "../../testdata/white.png", true, 1.0)
+	testBothRatioMethods(t, "../../testdata/im1.png", "../../testdata/im1.png", true, 0)
+	testBothRatioMethods(t, "../../testdata/mario-circle-node.png",
+		"../../testdata/mario-circle-cs.png",
 		true,
 		0.0017478156325230589)
 }
