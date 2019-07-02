@@ -1,93 +1,91 @@
 package diffimg
 
 import (
+	"fmt"
 	"image/color"
 	_ "image/jpeg"
 	_ "image/png"
+	"path/filepath"
 	"testing"
 )
 
-// Test helpers
-// Templated tests for each function, note the lowercase `test` in the name
+func Test(t *testing.T) {
+	type Test struct {
+		A, B        string
+		IgnoreAlpha bool
+		Expected    float64
+	}
 
-func testAbsDiffUint8(t *testing.T, x, y, expected uint8) {
-	val := absDiffUint8(x, y)
-	if val != expected {
-		t.Errorf("AbsDiffUint8(%v, %v): expected %v, got %v\n",
-			x, y, 10, val)
+	var tests = []Test{
+		{"black.png", "white.png", false, 0.75},
+		{"im1.png", "im1.png", false, 0},
+		{"mario-circle-node.png", "mario-circle-cs.png", false, 0.002123925685759868},
+
+		{"black.png", "white.png", true, 1.0},
+		{"im1.png", "im1.png", true, 0},
+		{"mario-circle-node.png", "mario-circle-cs.png", true, 0.0017478156325230589},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("%v-%v: IgnoreAlpha:%v", test.A, test.B, test.IgnoreAlpha), func(t *testing.T) {
+			a := LoadImage(filepath.Join("../../testdata", test.A))
+			b := LoadImage(filepath.Join("../../testdata", test.B))
+
+			ratio := GetRatio(a, b, test.IgnoreAlpha)
+			if ratio != test.Expected {
+				t.Errorf("GetRatio: got ratio %v, expected %v", ratio, test.Expected)
+			}
+
+			diff := CreateDiffImage(a, b, test.IgnoreAlpha)
+			ratio = GetRatioFromImage(diff, test.IgnoreAlpha)
+			if ratio != test.Expected {
+				t.Errorf("CreateDiffImage: got ratio %v, expected %v", ratio, test.Expected)
+			}
+		})
 	}
 }
-
-func testRgbaArrayUint8(t *testing.T, r, g, b, a uint8, expected [4]uint8) {
-	col := color.RGBA{r, g, b, a}
-	colArr := rgbaArrayUint8(col)
-	if colArr != expected {
-		t.Errorf("RgbaArrayUint8(1,2,3,4): expected %v, got %v\n",
-			expected, colArr)
-	}
-}
-
-func testGetRatio(
-	t *testing.T, im1file, im2file string, ignoreAlpha bool, expected float64) {
-	im1 := LoadImage(im1file)
-	im2 := LoadImage(im2file)
-	ratio := GetRatio(im1, im2, ignoreAlpha)
-	if ratio != expected {
-		t.Errorf("GetRatio(%v, %v): expected %v, got %v\n",
-			im1file, im2file, expected, ratio)
-	}
-}
-
-func testGetRatioFromImage(
-	t *testing.T, im1file, im2file string, ignoreAlpha bool, expected float64) {
-	im1 := LoadImage(im1file)
-	im2 := LoadImage(im2file)
-	diffIm := CreateDiffImage(im1, im2, ignoreAlpha)
-	ratio := GetRatioFromImage(diffIm, ignoreAlpha)
-	if ratio != expected {
-		t.Errorf("GetRatioFromImage(%v, %v): expected %v, got %v\n",
-			im1file, im2file, expected, ratio)
-	}
-}
-
-func testBothRatioMethods(
-	t *testing.T, im1file, im2file string, ignoreAlpha bool, expected float64) {
-	testGetRatio(t, im1file, im2file, ignoreAlpha, expected)
-	testGetRatioFromImage(t, im1file, im2file, ignoreAlpha, expected)
-}
-
-// Actual tests
 
 func TestRgbaArrayUint8(t *testing.T) {
-	testRgbaArrayUint8(t, 1, 2, 3, 4, [4]uint8{1, 2, 3, 4})
-	testRgbaArrayUint8(t, 255, 255, 255, 255, [4]uint8{255, 255, 255, 255})
-	testRgbaArrayUint8(t, 0, 0, 0, 0, [4]uint8{0, 0, 0, 0})
+	type Test struct {
+		Color    color.RGBA
+		Expected [4]uint8
+	}
+
+	var tests = []Test{
+		{color.RGBA{1, 2, 3, 4}, [4]uint8{1, 2, 3, 4}},
+		{color.RGBA{255, 255, 255, 255}, [4]uint8{255, 255, 255, 255}},
+		{color.RGBA{0, 0, 0, 0}, [4]uint8{0, 0, 0, 0}},
+	}
+
+	for _, test := range tests {
+		got := rgbaArrayUint8(test.Color)
+		if got != test.Expected {
+			t.Errorf("rgbaArrayUint8(%v): expected %v, got %v", test.Color, test.Expected, got)
+		}
+	}
 }
 
 func TestAbsDiffUint8(t *testing.T) {
-	testAbsDiffUint8(t, 30, 40, 10)
-	testAbsDiffUint8(t, 255, 1, 254)
-	testAbsDiffUint8(t, 1, 255, 254)
-	testAbsDiffUint8(t, 0, 0, 0)
-}
+	type Test struct {
+		A, B, Result uint8
+	}
 
-func TestGetRatio(t *testing.T) {
-	// Pure black vs pure white image, both opaque
-	testBothRatioMethods(t, "../../testdata/black.png", "../../testdata/white.png", false, 0.75)
-	// Same image
-	testBothRatioMethods(t, "../../testdata/im1.png", "../../testdata/im1.png", false, 0)
-	// Image with non-homogenous alpha
-	testBothRatioMethods(t, "../../testdata/mario-circle-node.png",
-		"../../testdata/mario-circle-cs.png",
-		false,
-		0.002123925685759868)
-}
+	var tests = []Test{
+		{30, 40, 10},
+		{255, 1, 254},
+		{127, 128, 1},
+		{0, 0, 0},
+	}
 
-func TestGetRatioIgnoreAlpha(t *testing.T) {
-	testBothRatioMethods(t, "../../testdata/black.png", "../../testdata/white.png", true, 1.0)
-	testBothRatioMethods(t, "../../testdata/im1.png", "../../testdata/im1.png", true, 0)
-	testBothRatioMethods(t, "../../testdata/mario-circle-node.png",
-		"../../testdata/mario-circle-cs.png",
-		true,
-		0.0017478156325230589)
+	for _, test := range tests {
+		diffAB := absDiffUint8(test.A, test.B)
+		if diffAB != test.Result {
+			t.Errorf("absDiffUint8(%v, %v): expected %v, got %v", test.A, test.B, test.Result, diffAB)
+		}
+
+		diffBA := absDiffUint8(test.B, test.A)
+		if diffBA != test.Result {
+			t.Errorf("absDiffUint8(%v, %v): expected %v, got %v", test.B, test.A, test.Result, diffBA)
+		}
+	}
 }
