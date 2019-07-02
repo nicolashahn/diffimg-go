@@ -37,23 +37,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Ensure images are compatible for diffing
-	diffimg.CheckDimensions(a, b)
-
-	var ratio float64
 	if *diffOutput != "" {
-		diffIm := diffimg.CreateDiffImage(a, b, *ignoreAlpha)
-		ratio = diffimg.GetRatioFromImage(diffIm, *ignoreAlpha)
-
-		err := imgutil.WritePNG(*diffOutput)
+		diff, ratio, err := diffimg.RGBA(a, b, *ignoreAlpha)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to write %q: %v\n", *diffoutput, berr)
+			fmt.Fprintf(os.Stderr, "failed to diff: %v\n", err)
 			os.Exit(1)
 		}
-	} else {
-		// Just getting the ratio without creating a diffIm is faster
-		ratio = diffimg.GetRatio(a, b, *ignoreAlpha)
-	}
 
-	fmt.Println(ratio)
+		err = imgutil.WritePNG(*diffOutput, diff)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to write %q: %v\n", *diffOutput, berr)
+			os.Exit(1)
+		}
+
+		fmt.Println(ratio)
+	} else {
+		ratio, err := diffimg.RatioRGBA(a, b, *ignoreAlpha)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to diff: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println(ratio)
+	}
 }

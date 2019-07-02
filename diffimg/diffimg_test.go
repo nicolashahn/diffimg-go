@@ -2,7 +2,6 @@ package diffimg
 
 import (
 	"fmt"
-	"image/color"
 	"path/filepath"
 	"testing"
 
@@ -37,61 +36,18 @@ func Test(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			ratio := GetRatio(a, b, test.IgnoreAlpha)
+			ratio, err := RatioRGBA(a, b, test.IgnoreAlpha)
+			if err != nil {
+				t.Fatalf("RatioRGBA failed: %v", err)
+			}
 			if ratio != test.Expected {
 				t.Errorf("GetRatio: got ratio %v, expected %v", ratio, test.Expected)
 			}
 
-			diff := CreateDiffImage(a, b, test.IgnoreAlpha)
-			ratio = GetRatioFromImage(diff, test.IgnoreAlpha)
-			if ratio != test.Expected {
-				t.Errorf("CreateDiffImage: got ratio %v, expected %v", ratio, test.Expected)
+			_, ratio, err = RGBA(a, b, test.IgnoreAlpha)
+			if err != nil {
+				t.Fatalf("RGBA failed: %v", err)
 			}
 		})
-	}
-}
-
-func TestRgbaArrayUint8(t *testing.T) {
-	type Test struct {
-		Color    color.RGBA
-		Expected [4]uint8
-	}
-
-	var tests = []Test{
-		{color.RGBA{1, 2, 3, 4}, [4]uint8{1, 2, 3, 4}},
-		{color.RGBA{255, 255, 255, 255}, [4]uint8{255, 255, 255, 255}},
-		{color.RGBA{0, 0, 0, 0}, [4]uint8{0, 0, 0, 0}},
-	}
-
-	for _, test := range tests {
-		got := rgbaArrayUint8(test.Color)
-		if got != test.Expected {
-			t.Errorf("rgbaArrayUint8(%v): expected %v, got %v", test.Color, test.Expected, got)
-		}
-	}
-}
-
-func TestAbsDiffUint8(t *testing.T) {
-	type Test struct {
-		A, B, Result uint8
-	}
-
-	var tests = []Test{
-		{30, 40, 10},
-		{255, 1, 254},
-		{127, 128, 1},
-		{0, 0, 0},
-	}
-
-	for _, test := range tests {
-		diffAB := absDiffUint8(test.A, test.B)
-		if diffAB != test.Result {
-			t.Errorf("absDiffUint8(%v, %v): expected %v, got %v", test.A, test.B, test.Result, diffAB)
-		}
-
-		diffBA := absDiffUint8(test.B, test.A)
-		if diffBA != test.Result {
-			t.Errorf("absDiffUint8(%v, %v): expected %v, got %v", test.B, test.A, test.Result, diffBA)
-		}
 	}
 }
